@@ -31,6 +31,13 @@ namespace DotLiquid
         private static readonly Dictionary<Type, Func<object, object>> SafeTypeTransformers;
         private static readonly Dictionary<Type, Func<object, object>> ValueTypeTransformers;
 
+        private static readonly Lazy<Regex> LeadingRegex = new Lazy<Regex>(() => new Regex(
+            $@"([ \t]+)?({Liquid.VariableStart}|{Liquid.TagStart})-",
+            RegexOptions.Compiled));
+        private static readonly Lazy<Regex> TrailingRegex = new Lazy<Regex>(() => new Regex(
+            $@"-({Liquid.VariableEnd}|{Liquid.TagEnd})(\n|\r\n|[ \t]+)?",
+            RegexOptions.Compiled));
+
         static Template()
         {
             NamingConvention = new RubyNamingConvention();
@@ -321,10 +328,10 @@ namespace DotLiquid
                 return new List<string>();
 
             // Trim leading whitespace.
-            source = Regex.Replace(source, string.Format(@"([ \t]+)?({0}|{1})-", Liquid.VariableStart, Liquid.TagStart), "$2");
+            source = LeadingRegex.Value.Replace(source, "$2");
 
             // Trim trailing whitespace.
-            source = Regex.Replace(source, string.Format(@"-({0}|{1})(\n|\r\n|[ \t]+)?", Liquid.VariableEnd, Liquid.TagEnd), "$1");
+            source = TrailingRegex.Value.Replace(source, "$1");
 
             List<string> tokens = Regex.Split(source, Liquid.TemplateParser).ToList();
 

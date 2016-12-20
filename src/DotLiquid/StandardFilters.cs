@@ -8,6 +8,7 @@ using System.Net;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
+using DotLiquid.Exceptions;
 #if NET35
 using System.Web;
 #endif
@@ -588,17 +589,21 @@ namespace DotLiquid
 
         private static object DoMathsOperation(object input, object operand, Func<Expression, Expression, BinaryExpression> operation)
         {
-            if (input is int && operand is int)
-                return DoMathsOperation((int)input, (int)operand, operation);
+            if (input.IsNumeric() && operand.IsNumeric())
+                return DoNumericMathsOperation(input, operand, operation);
+
             return input == null || operand == null
                 ? null
                 : ExpressionUtility.CreateExpression(operation, input.GetType(), operand.GetType(), input.GetType(), true)
                     .DynamicInvoke(input, operand);
         }
 
-        private static int DoMathsOperation(int input, int operand,
+        private static dynamic DoNumericMathsOperation(dynamic input, dynamic operand,
             Func<Expression, Expression, BinaryExpression> operation)
         {
+            if (!((object)input).IsNumeric() || !((object)operand).IsNumeric())
+                throw new System.ArgumentException();
+
             if (operation == Expression.Add)
                 return input + operand;
             if (operation == Expression.Modulo)
@@ -618,6 +623,22 @@ namespace DotLiquid
         public static bool IsNullOrWhiteSpace(this string s)
         {
             return string.IsNullOrEmpty(s) || s.Trim().Length == 0;
+        }
+    }
+
+    internal static class NumericExtensions
+    {
+        public static bool IsNumeric(this object value)
+        {
+            return value is int
+                   || value is long
+                   || value is short
+                   || value is ushort
+                   || value is uint
+                   || value is ulong
+                   || value is float
+                   || value is double
+                   || value is decimal;
         }
     }
 }

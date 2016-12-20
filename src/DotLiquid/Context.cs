@@ -15,6 +15,10 @@ namespace DotLiquid
         private readonly bool _rethrowErrors;
         private Strainer _strainer;
 
+        private static readonly Lazy<Regex> SquareBracketed = new Lazy<Regex>(() => new Regex(
+            R.Q(@"^\[(.*)\]$"),
+            RegexOptions.Compiled));
+
         public List<Hash> Environments { get; private set; }
         public List<Hash> Scopes { get; private set; }
         public Hash Registers { get; private set; }
@@ -283,10 +287,9 @@ namespace DotLiquid
         private object Variable(string markup)
         {
             List<string> parts = R.Scan(markup, Liquid.VariableParser);
-            Regex squareBracketed = new Regex(R.Q(@"^\[(.*)\]$"));
 
             string firstPart = parts.Shift();
-            Match firstPartSquareBracketedMatch = squareBracketed.Match(firstPart);
+            Match firstPartSquareBracketedMatch = SquareBracketed.Value.Match(firstPart);
             if (firstPartSquareBracketedMatch.Success)
                 firstPart = Resolve(firstPartSquareBracketedMatch.Groups[1].Value).ToString();
 
@@ -295,7 +298,7 @@ namespace DotLiquid
             {
                 foreach (string forEachPart in parts)
                 {
-                    Match partSquareBracketedMatch = squareBracketed.Match(forEachPart);
+                    Match partSquareBracketedMatch = SquareBracketed.Value.Match(forEachPart);
                     bool partResolved = partSquareBracketedMatch.Success;
 
                     object part = forEachPart;
