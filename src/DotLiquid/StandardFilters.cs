@@ -18,6 +18,19 @@ namespace DotLiquid
 {
     public static class StandardFilters
     {
+        private static System.Runtime.Caching.MemoryCache Cache => System.Runtime.Caching.MemoryCache.Default;
+
+        private static T GetFromCacheOrAdd<T>(string key, Func<T> valueFunc, TimeSpan expireIn)
+        {
+            var cacheItem = (T)Cache.Get(key);
+            if (cacheItem == null)
+            {
+                cacheItem = valueFunc();
+                Cache.Add(key, cacheItem, DateTimeOffset.UtcNow + expireIn);
+            }
+            return cacheItem;
+        }
+
         /// <summary>
         /// Return the size of an array or of an string
         /// </summary>
@@ -587,34 +600,16 @@ namespace DotLiquid
             return DoMathsOperation(input, operand, Expression.Modulo);
         }
 
-        private static object DoMathsOperation(object input, object operand, Func<Expression, Expression, BinaryExpression> operation)
-        {
-            if (input.IsNumeric() && operand.IsNumeric())
-                return DoNumericMathsOperation(input, operand, operation);
-
-            return input == null || operand == null
-                ? null
-                : ExpressionUtility.CreateExpression(operation, input.GetType(), operand.GetType(), input.GetType(), true)
-                    .DynamicInvoke(input, operand);
-        }
-
-        private static dynamic DoNumericMathsOperation(dynamic input, dynamic operand,
+        private static object DoMathsOperation(object input, object operand,
             Func<Expression, Expression, BinaryExpression> operation)
         {
-            if (!((object)input).IsNumeric() || !((object)operand).IsNumeric())
-                throw new System.ArgumentException();
-
-            if (operation == Expression.Add)
-                return input + operand;
-            if (operation == Expression.Modulo)
-                return input % operand;
-            if (operation == Expression.Divide)
-                return input / operand;
-            if (operation == Expression.Subtract)
-                return input - operand;
-            if (operation == Expression.Multiply)
-                return input * operand;
-            return 0;
+            return input == null || operand == null
+                ? null
+                : GetFromCacheOrAdd(
+                        $"{operation.Method.Name}{input.GetType().FullName}{operand.GetType().FullName}",
+                        () => ExpressionUtility.CreateExpression(operation, input.GetType(), operand.GetType(), input.GetType(), true),
+                        TimeSpan.FromMinutes(5))
+                    .DynamicInvoke(input, operand);
         }
     }
 
@@ -623,22 +618,6 @@ namespace DotLiquid
         public static bool IsNullOrWhiteSpace(this string s)
         {
             return string.IsNullOrEmpty(s) || s.Trim().Length == 0;
-        }
-    }
-
-    internal static class NumericExtensions
-    {
-        public static bool IsNumeric(this object value)
-        {
-            return value is int
-                   || value is long
-                   || value is short
-                   || value is ushort
-                   || value is uint
-                   || value is ulong
-                   || value is float
-                   || value is double
-                   || value is decimal;
         }
     }
 }
