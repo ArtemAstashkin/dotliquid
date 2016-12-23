@@ -226,9 +226,32 @@ namespace DotLiquid.Tests
 		{
 			Helper.AssertTemplateResult("2", "{{ 1 | plus:1 }}");
 			Helper.AssertTemplateResult("11", "{{ '1' | plus:'1' }}");
-		}
+        }
 
-		[Test]
+        [Test]
+	    public void TestNumericTypesConversion()
+	    {
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 1f, b = 1m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 1d, b = 1m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 1, b = 1m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = (short)1, b = 1m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = (ushort)1, b = 1m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = (long)1, b = 1m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = (ulong)1, b = 1m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = (uint)1, b = 1m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 1m, b = 1m }));
+        }
+
+        [Test]
+        public void TestCacheExpressions()
+        {
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 1f, b = 1m }));
+            Helper.AssertTemplateResult("3", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 2f, b = 1m }));
+            Helper.AssertTemplateResult("4", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 2f, b = 2m }));
+            Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 1f, b = 1m }));
+        }
+
+        [Test]
 		public void TestMinus()
 		{
 			Helper.AssertTemplateResult("4", "{{ input | minus:operand }}", Hash.FromAnonymousObject(new { input = 5, operand = 1 }));
