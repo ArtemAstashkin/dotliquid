@@ -1,6 +1,9 @@
 # DotLiquid
 
-[![Build status](https://ci.appveyor.com/api/projects/status/itsl3a6ludjah4o3)](https://ci.appveyor.com/project/tgjones/dotliquid)
+[![AppVeyor build](https://ci.appveyor.com/api/projects/status/github/dotliquid/dotliquid?branch=master&svg=true)](https://ci.appveyor.com/project/tgjones/dotliquid)
+[![TravisCI build](https://travis-ci.org/dotliquid/dotliquid.svg?branch=master)](https://travis-ci.org/dotliquid/dotliquid)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/dotliquid/dotliquid?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![codecov](https://codecov.io/gh/dotliquid/dotliquid/branch/master/graph/badge.svg)](https://codecov.io/gh/dotliquid/dotliquid)
 
 ## Maintainers wanted
 
@@ -29,6 +32,8 @@ For more information about the original Liquid project, see
 
 ### Why should I use DotLiquid?
 
+* You want to leave business logic in your compiled controllers and out of your templates.
+* You're looking for a logic-less template language that also exists for other platforms (ie: node, python).
 * You want to allow your users to edit their own page templates, but want to
   ensure they don't run insecure code.
 * You want to render templates directly from the database.
@@ -65,3 +70,5 @@ using the `Hash.FromAnonymousObject` method.
 Are you using DotLiquid in an open source project? Tell us with a PR!
 
  - [Suave.DotLiquid](https://github.com/SuaveIO/suave#introduction)
+ - [Pretzel](https://github.com/Code52/Pretzel)
+ - [Docfx](https://github.com/dotnet/docfx)

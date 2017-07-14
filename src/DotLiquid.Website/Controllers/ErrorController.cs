@@ -1,18 +1,17 @@
-﻿using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DotLiquid.Website.Controllers
 {
-	[HandleError]
-	public class ErrorController : Controller
-	{
-		public ActionResult Index()
-		{
-			return View();
-		}
+    public class ErrorController : Controller
+    {
+        public ActionResult Index()
+        {
+            return View();
+        }
 
-		public ActionResult PageNotFound()
-		{
-			return View();
-		}
-	}
+        public ActionResult PageNotFound()
+        {
+            return View();
+        }
+    }
 }

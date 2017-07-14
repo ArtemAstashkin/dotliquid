@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using DotLiquid.FileSystems;
 using DotLiquid.Util;
@@ -14,20 +15,40 @@ namespace DotLiquid
     /// Interpreting templates is a two step process. First you compile the
     /// source code you got. During compile time some extensive error checking is performed.
     /// your code should expect to get some SyntaxErrors.
-    /// 
+    ///
     /// After you have a compiled template you can then <tt>render</tt> it.
     /// You can use a compiled template over and over again and keep it cached.
-    /// 
+    ///
     /// Example:
-    /// 
+    ///
     /// template = Liquid::Template.parse(source)
     /// template.render('user_name' => 'bob')
     /// </summary>
     public class Template
     {
-        public static INamingConvention NamingConvention;
+        /// <summary>
+        /// Naming convention used for template parsing
+        /// </summary>
+        /// <remarks>Default is Ruby</remarks>
+        public static INamingConvention NamingConvention { get; set; }
+
+        /// <summary>
+        /// Filesystem used for template reading
+        /// </summary>
         public static IFileSystem FileSystem { get; set; }
-        private static Dictionary<string, Type> Tags { get; set; }
+
+        /// <summary>
+        /// Indicates if the default is thread safe
+        /// </summary>
+        public static bool DefaultIsThreadSafe { get; set; }
+
+        private static Dictionary<string, Tuple<ITagFactory, Type>> Tags { get; set; }
+
+        /// <summary>
+        /// TimeOut used for all Regex in DotLiquid
+        /// </summary>
+        public static TimeSpan RegexTimeOut { get; set; }
+
         private static readonly Dictionary<Type, Func<object, object>> SafeTypeTransformers;
         private static readonly Dictionary<Type, Func<object, object>> ValueTypeTransformers;
 
@@ -40,24 +61,57 @@ namespace DotLiquid
 
         static Template()
         {
+            RegexTimeOut = TimeSpan.FromSeconds(10);
             NamingConvention = new RubyNamingConvention();
             FileSystem = new BlankFileSystem();
-            Tags = new Dictionary<string, Type>();
+            Tags = new Dictionary<string, Tuple<ITagFactory, Type>>();
             SafeTypeTransformers = new Dictionary<Type, Func<object, object>>();
             ValueTypeTransformers = new Dictionary<Type, Func<object, object>>();
         }
 
+        /// <summary>
+        /// Register a tag
+        /// </summary>
+        /// <typeparam name="T">Type of the tag</typeparam>
+        /// <param name="name">Name of the tag</param>
         public static void RegisterTag<T>(string name)
             where T : Tag, new()
         {
-            Tags[name] = typeof(T);
+            var tagType = typeof(T);
+            Tags[name] = new Tuple<ITagFactory,Type>(new ActivatorTagFactory(tagType, name), tagType);
         }
 
+        /// <summary>
+        /// Registers a tag factory.
+        /// </summary>
+        /// <param name="tagFactory">The ITagFactory to be registered</param>
+        public static void RegisterTagFactory(ITagFactory tagFactory)
+        {
+            Tags[tagFactory.TagName] = new Tuple<ITagFactory, Type>(tagFactory, null);
+        }
+
+        /// <summary>
+        /// Get the tag type from it's name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public static Type GetTagType(string name)
         {
-            Type result;
-            Tags.TryGetValue(name, out result);
-            return result;
+            Tags.TryGetValue(name, out Tuple<ITagFactory, Type> result);
+            return result.Item2;
+        }
+
+        internal static Tag CreateTag(string name)
+        {
+            Tag tagInstance = null;
+            Tags.TryGetValue(name, out Tuple<ITagFactory, Type> result);
+
+            if (result != null)
+            {
+                tagInstance = result.Item1.Create();
+            }
+
+            return tagInstance;
         }
 
         /// <summary>
@@ -85,6 +139,7 @@ namespace DotLiquid
         /// </summary>
         /// <param name="type">The type to register</param>
         /// <param name="allowedMembers">An array of property and method names that are allowed to be called on the object.</param>
+        /// <param name="func">Function that converts the specified type into a Liquid Drop-compatible object (eg, implements ILiquidizable)</param>
         public static void RegisterSafeType(Type type, string[] allowedMembers, Func<object, object> func)
         {
             RegisterSafeType(type, x => new DropProxy(x, allowedMembers, func));
@@ -110,35 +165,51 @@ namespace DotLiquid
             ValueTypeTransformers[type] = func;
         }
 
+        /// <summary>
+        /// Gets the corresponding value type converter
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
         public static Func<object, object> GetValueTypeTransformer(Type type)
         {
             // Check for concrete types
-            if (ValueTypeTransformers.ContainsKey(type))
-                return ValueTypeTransformers[type];
+            if (ValueTypeTransformers.TryGetValue(type, out Func<object, object> transformer))
+                return transformer;
 
             // Check for interfaces
-            foreach (var interfaceType in ValueTypeTransformers.Where(x => x.Key.IsInterface))
+            var interfaces = type.GetTypeInfo().ImplementedInterfaces;
+            foreach (var interfaceType in interfaces)
             {
-                if (type.GetInterfaces().Contains(interfaceType.Key))
-                    return interfaceType.Value;
+                if (ValueTypeTransformers.TryGetValue(interfaceType, out transformer))
+                    return transformer;
+                if (interfaceType.GetTypeInfo().IsGenericType && ValueTypeTransformers.TryGetValue(
+                    interfaceType.GetGenericTypeDefinition(), out transformer))
+                    return transformer;
             }
-
             return null;
         }
 
+        /// <summary>
+        /// Gets the corresponding safe type transformer
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
         public static Func<object, object> GetSafeTypeTransformer(Type type)
         {
             // Check for concrete types
-            if (SafeTypeTransformers.ContainsKey(type))
-                return SafeTypeTransformers[type];
+            if (SafeTypeTransformers.TryGetValue(type, out Func<object, object> transformer))
+                return transformer;
 
             // Check for interfaces
-            foreach (var interfaceType in SafeTypeTransformers.Where(x => x.Key.IsInterface))
+            var interfaces = type.GetTypeInfo().ImplementedInterfaces;
+            foreach (var interfaceType in interfaces)
             {
-                if (type.GetInterfaces().Contains(interfaceType.Key))
-                    return interfaceType.Value;
+                if (SafeTypeTransformers.TryGetValue(interfaceType, out transformer))
+                    return transformer;
+                if (interfaceType.GetTypeInfo().IsGenericType && SafeTypeTransformers.TryGetValue(
+                    interfaceType.GetGenericTypeDefinition(), out transformer))
+                    return transformer;
             }
-
             return null;
         }
 
@@ -163,7 +234,11 @@ namespace DotLiquid
 
         private Hash _registers, _assigns, _instanceAssigns;
         private List<Exception> _errors;
+        private bool? _isThreadSafe;
 
+        /// <summary>
+        /// Liquid document
+        /// </summary>
         public Document Root { get; set; }
 
         public Hash Registers
@@ -181,9 +256,20 @@ namespace DotLiquid
             get { return (_instanceAssigns = _instanceAssigns ?? new Hash()); }
         }
 
+        /// <summary>
+        /// Exceptions that have been raised during template rendering
+        /// </summary>
         public List<Exception> Errors
         {
             get { return (_errors = _errors ?? new List<Exception>()); }
+        }
+
+        /// <summary>
+        /// Indicates if the parsed templates will be thread safe
+        /// </summary>
+        public bool IsThreadSafe
+        {
+            get { return _isThreadSafe ?? DefaultIsThreadSafe; }
         }
 
         /// <summary>
@@ -220,6 +306,16 @@ namespace DotLiquid
         }
 
         /// <summary>
+        /// Make this template instance thread safe.
+        /// After this call, you can't use template owned variables anymore.
+        /// </summary>
+        /// <returns></returns>
+        public void MakeThreadSafe()
+        {
+            _isThreadSafe = true;
+        }
+
+        /// <summary>
         /// Renders the template using default parameters and returns a string containing the result.
         /// </summary>
         /// <returns></returns>
@@ -235,9 +331,10 @@ namespace DotLiquid
         /// <returns></returns>
         public string Render(Hash localVariables)
         {
-            return Render(new RenderParameters {
-                LocalVariables = localVariables
-            });
+            return Render(new RenderParameters
+                {
+                    LocalVariables = localVariables
+                });
         }
 
         /// <summary>
@@ -280,12 +377,12 @@ namespace DotLiquid
 
         /// <summary>
         /// Render takes a hash with local variables.
-        /// 
+        ///
         /// if you use the same filters over and over again consider registering them globally
         /// with <tt>Template.register_filter</tt>
-        /// 
+        ///
         /// Following options can be passed:
-        /// 
+        ///
         /// * <tt>filters</tt> : array with local filters
         /// * <tt>registers</tt> : hash with register variables. Those can be accessed from
         /// filters and tags and might be useful to integrate liquid more with its host application
@@ -295,16 +392,16 @@ namespace DotLiquid
             if (Root == null)
                 return;
 
-            Context context;
-            Hash registers;
-            IEnumerable<Type> filters;
-            parameters.Evaluate(this, out context, out registers, out filters);
+            parameters.Evaluate(this, out Context context, out Hash registers, out IEnumerable<Type> filters);
 
-            if (registers != null)
-                Registers.Merge(registers);
+            if (!IsThreadSafe)
+            {
+                if (registers != null)
+                    Registers.Merge(registers);
 
-            if (filters != null)
-                context.AddFilters(filters);
+                if (filters != null)
+                    context.AddFilters(filters);
+            }
 
             try
             {
@@ -313,7 +410,8 @@ namespace DotLiquid
             }
             finally
             {
-                _errors = context.Errors;
+                if (!IsThreadSafe)
+                    _errors = context.Errors;
             }
         }
 
