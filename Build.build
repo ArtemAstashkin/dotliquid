@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    
+    <UsingTask AssemblyFile="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v14.0\Web\Microsoft.Web.Publishing.Tasks.dll" TaskName="TransformXml"/>
+
+    <PropertyGroup>        
+        <_BuildOutput>$(MSBuildProjectDirectory)\_BuildOutput</_BuildOutput>        
+        <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    </PropertyGroup>
+
+    <Target Name="Build">
+        <RemoveDir Directories="$(_BuildOutput)" />
+        <MSBuild Projects="src\DotLiquid.sln" 
+            Targets="Rebuild" Properties="Configuration=$(Configuration);DeployOnBuild=true;DeployTarget=Package" /> 
+    </Target>
+</Project>
