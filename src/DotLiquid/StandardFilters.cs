@@ -1,21 +1,18 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
-#if !NET35
 using System.Net;
-#endif
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
-using DotLiquid.Exceptions;
-#if NET35
-using System.Web;
-#endif
 using DotLiquid.Util;
 
 namespace DotLiquid
 {
+    /// <summary>
+    /// Standard Liquid filters
+    /// </summary>
     public static class StandardFilters
     {
         /// <summary>
@@ -25,10 +22,14 @@ namespace DotLiquid
         /// <returns></returns>
         public static int Size(object input)
         {
-            if (input is string)
-                return ((string)input).Length;
-            if (input is IEnumerable)
-                return ((IEnumerable)input).Cast<object>().Count();
+            if (input is string stringInput)
+            {
+                return stringInput.Length;
+            }
+            if (input is IEnumerable enumerableInput)
+            {
+                return enumerableInput.Cast<object>().Count();
+            }
             return 0;
         }
 
@@ -43,10 +44,15 @@ namespace DotLiquid
         {
             if (input == null || start > input.Length)
                 return null;
+
             if (start < 0)
+            { 
                 start += input.Length;
+            }
             if (start + len > input.Length)
+            { 
                 len = input.Length - start;
+            }
             return input.Substring(start, len);
         }
 
@@ -73,6 +79,18 @@ namespace DotLiquid
         }
 
         /// <summary>
+        /// convert a input string to URLENCODE
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string UrlEncode(string input)
+        {
+            return input == null
+                ? input
+                : Uri.EscapeDataString(input);
+        }
+
+        /// <summary>
         /// capitalize words in the input sentence
         /// </summary>
         /// <param name="input"></param>
@@ -84,9 +102,19 @@ namespace DotLiquid
 
             return string.IsNullOrEmpty(input)
                 ? input
+#if CORE
+                : Regex.Replace(input, @"\b(\w)", m => m.Value.ToUpper(), RegexOptions.None, Template.RegexTimeOut);
+#else
                 : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(input);
+#endif
         }
 
+        /// <summary>
+        /// Escape html chars
+        /// </summary>
+        /// <param name="input">String to escape</param>
+        /// <returns>Escaped string</returns>
+        /// <remarks>Alias of H</remarks>
         public static string Escape(string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -94,11 +122,7 @@ namespace DotLiquid
 
             try
             {
-#if NET35
-                return HttpUtility.HtmlEncode(input);
-#else
                 return WebUtility.HtmlEncode(input);
-#endif
             }
             catch
             {
@@ -106,43 +130,17 @@ namespace DotLiquid
             }
         }
 
+        /// <summary>
+        /// Escape html chars
+        /// </summary>
+        /// <param name="input">String to escape</param>
+        /// <returns>Escaped string</returns>
+        /// <remarks>Alias of Escape</remarks>
         public static string H(string input)
         {
             return Escape(input);
         }
 
-
-#if NET35
-	/// <summary>
-	/// Truncates a string down to 15 characters
-	/// </summary>
-	/// <param name="input"></param>
-	/// <returns></returns>
-        public static string Truncate(string input)
-        {
-            return Truncate(input, 15, "...");
-        }
-
-        /// <summary>
-        /// Truncates a string down to <paramref name="length"/> characters
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="length"></param>
-        /// <returns></returns>
-        public static string Truncate(string input, int length)
-        {
-            return Truncate(input, length, "...");
-        }
-
-        /// <summary>
-        /// Truncates a string down to x characters
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="length"></param>
-        /// <param name="truncateString"></param>
-        /// <returns></returns>
-        public static string Truncate(string input, int length, string truncateString)
-#else
         /// <summary>
         /// Truncates a string down to x characters
         /// </summary>
@@ -151,7 +149,6 @@ namespace DotLiquid
         /// <param name="truncateString"></param>
         /// <returns></returns>
         public static string Truncate(string input, int length = 50, string truncateString = "...")
-#endif
         {
             if (string.IsNullOrEmpty(input))
                 return input;
@@ -163,21 +160,14 @@ namespace DotLiquid
                 : input;
         }
 
-#if NET35
-        public static string TruncateWords(string input)
-        {
-            return TruncateWords(input, 15);
-        }
-
-        public static string TruncateWords(string input, int words)
-        {
-            return TruncateWords(input, words, "...");
-        }
-
-        public static string TruncateWords(string input, int words, string truncateString)
-#else
+        /// <summary>
+        /// Truncate a string down to x words
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="words"></param>
+        /// <param name="truncateString"></param>
+        /// <returns></returns>
         public static string TruncateWords(string input, int words = 15, string truncateString = "...")
-#endif
         {
             if (string.IsNullOrEmpty(input))
                 return input;
@@ -203,11 +193,40 @@ namespace DotLiquid
                 : input.Split(new[] { pattern }, StringSplitOptions.RemoveEmptyEntries);
         }
 
+        /// <summary>
+        /// Strip all html nodes from input
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
         public static string StripHtml(string input)
         {
             return input.IsNullOrWhiteSpace()
                 ? input
-                : Regex.Replace(input, @"<.*?>", string.Empty);
+                : Regex.Replace(input, @"<.*?>", string.Empty, RegexOptions.None, Template.RegexTimeOut);
+        }
+
+        /// <summary>
+        /// Converts the input object into a formatted currency as specified by the culture info.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="cultureInfo"></param>
+        /// <returns></returns>
+        public static string Currency(object input, string cultureInfo = null)
+        {
+
+            if (decimal.TryParse(input.ToString(), out decimal amount))
+            {
+                if (cultureInfo.IsNullOrWhiteSpace())
+                {
+                    cultureInfo = CultureInfo.CurrentCulture.Name;
+                }
+
+                var culture = new CultureInfo(cultureInfo);
+
+                return amount.ToString("C", culture);
+            }
+
+            return input.ToString();
         }
 
         /// <summary>
@@ -219,30 +238,9 @@ namespace DotLiquid
         {
             return input.IsNullOrWhiteSpace()
                 ? input
-                : Regex.Replace(input, @"(\r?\n)", String.Empty);
-
-            //: Regex.Replace(input, Environment.NewLine, string.Empty);
+                : Regex.Replace(input, @"(\r?\n)", string.Empty, RegexOptions.None, Template.RegexTimeOut);
         }
 
-#if NET35
-	/// <summary>
-	/// Join elements of the array with a certain character between them
-	/// </summary>
-	/// <param name="input"></param>
-	/// <returns></returns>
-        public static string Join(IEnumerable input)
-        {
-            return Join(input, " ");
-        }
-
-        /// <summary>
-        /// Join elements of the array with a certain character between them
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="glue"></param>
-        /// <returns></returns>
-        public static string Join(IEnumerable input, string glue)
-#else
         /// <summary>
         /// Join elements of the array with a certain character between them
         /// </summary>
@@ -250,40 +248,15 @@ namespace DotLiquid
         /// <param name="glue"></param>
         /// <returns></returns>
         public static string Join(IEnumerable input, string glue = " ")
-#endif
         {
             if (input == null)
                 return null;
 
             IEnumerable<object> castInput = input.Cast<object>();
-#if NET35
-            return string.Join(glue, castInput.Select(o => o.ToString()).ToArray());
-#else
+
             return string.Join(glue, castInput);
-#endif
         }
 
-#if NET35
-	/// <summary>
-	/// Sort elements of the array
-	/// provide optional property with which to sort an array of hashes or drops
-	/// </summary>
-	/// <param name="input"></param>
-	/// <returns></returns>
-        public static IEnumerable Sort(object input)
-        {
-            return Sort(input, null);
-        }
-
-        /// <summary>
-        /// Sort elements of the array
-        /// provide optional property with which to sort an array of hashes or drops
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="property"></param>
-        /// <returns></returns>
-        public static IEnumerable Sort(object input, string property)
-#else
         /// <summary>
         /// Sort elements of the array
         /// provide optional property with which to sort an array of hashes or drops
@@ -292,22 +265,32 @@ namespace DotLiquid
         /// <param name="property"></param>
         /// <returns></returns>
         public static IEnumerable Sort(object input, string property = null)
-#endif
         {
             List<object> ary;
-            if (input is IEnumerable)
-                ary = ((IEnumerable)input).Flatten().Cast<object>().ToList();
+            if (input is IEnumerable enumerableInput)
+            { 
+                ary = enumerableInput.Flatten().Cast<object>().ToList();
+            }
             else
+            { 
                 ary = new List<object>(new[] { input });
+            }
+
             if (!ary.Any())
                 return ary;
 
             if (string.IsNullOrEmpty(property))
+            { 
                 ary.Sort();
+            }
             else if ((ary.All(o => o is IDictionary)) && ((IDictionary)ary.First()).Contains(property))
-                ary.Sort((a, b) => Comparer.Default.Compare(((IDictionary)a)[property], ((IDictionary)b)[property]));
+            { 
+                ary.Sort((a, b) => Comparer<object>.Default.Compare(((IDictionary)a)[property], ((IDictionary)b)[property]));
+            }
             else if (ary.All(o => o.RespondTo(property)))
-                ary.Sort((a, b) => Comparer.Default.Compare(a.Send(property), b.Send(property)));
+            { 
+                ary.Sort((a, b) => Comparer<object>.Default.Compare(a.Send(property), b.Send(property)));
+            }
 
             return ary;
         }
@@ -332,27 +315,6 @@ namespace DotLiquid
             return ary;
         }
 
-#if NET35
-	/// <summary>
-	/// Replace occurrences of a string with another
-	/// </summary>
-	/// <param name="input"></param>
-	/// <param name="string"></param>
-	/// <returns></returns>
-        public static string Replace(string input, string @string)
-        {
-            return Replace(input, @string, " ");
-        }
-
-        /// <summary>
-        /// Replace occurrences of a string with another
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="string"></param>
-        /// <param name="replacement"></param>
-        /// <returns></returns>
-        public static string Replace(string input, string @string, string replacement)
-#else
         /// <summary>
         /// Replace occurrences of a string with another
         /// </summary>
@@ -361,38 +323,15 @@ namespace DotLiquid
         /// <param name="replacement"></param>
         /// <returns></returns>
         public static string Replace(string input, string @string, string replacement = "")
-#endif
         {
             if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(@string))
                 return input;
 
             return string.IsNullOrEmpty(input)
                 ? input
-                : Regex.Replace(input, @string, replacement);
+                : Regex.Replace(input, @string, replacement, RegexOptions.None, Template.RegexTimeOut);
         }
 
-#if NET35
-	/// <summary>
-	/// Replace the first occurence of a string with another
-	/// </summary>
-	/// <param name="input"></param>
-	/// <param name="string"></param>
-	/// <param name="replacement"></param>
-	/// <returns></returns>
-        public static string ReplaceFirst(string input, string @string)
-        {
-            return ReplaceFirst(input, @string, "");
-        }
-
-        /// <summary>
-        /// Replace the first occurence of a string with another
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="string"></param>
-        /// <param name="replacement"></param>
-        /// <returns></returns>
-        public static string ReplaceFirst(string input, string @string, string replacement)
-#else
         /// <summary>
         /// Replace the first occurence of a string with another
         /// </summary>
@@ -401,7 +340,6 @@ namespace DotLiquid
         /// <param name="replacement"></param>
         /// <returns></returns>
         public static string ReplaceFirst(string input, string @string, string replacement = "")
-#endif
         {
             if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(@string))
                 return input;
@@ -414,7 +352,7 @@ namespace DotLiquid
 
                 doneReplacement = true;
                 return replacement;
-            });
+            }, RegexOptions.None, Template.RegexTimeOut);
         }
 
         /// <summary>
@@ -478,7 +416,7 @@ namespace DotLiquid
         {
             return input.IsNullOrWhiteSpace()
                     ? input
-                    : Regex.Replace(input, @"(\r?\n)", "<br />$1");
+                    : Regex.Replace(input, @"(\r?\n)", "<br />$1", RegexOptions.None, Template.RegexTimeOut);
         }
 
         /// <summary>
@@ -489,22 +427,33 @@ namespace DotLiquid
         /// <returns></returns>
         public static string Date(object input, string format)
         {
+            string value;
+
             if (input == null)
                 return null;
 
+            value = input.ToString();
+
             if (format.IsNullOrWhiteSpace())
-                return input.ToString();
+                return value;
 
             DateTime date;
 
-            return DateTime.TryParse(input.ToString(), out date)
-                ? Liquid.UseRubyDateFormat ? date.ToStrFTime(format) : date.ToString(format)
-                : input.ToString();
+            if (string.Equals(value, "now", StringComparison.OrdinalIgnoreCase) || string.Equals(value, "today", StringComparison.OrdinalIgnoreCase))
+            {
+                date = DateTime.Now;
+            }
+            else if (!DateTime.TryParse(value, out date))
+            {
+                return value;
+            }
+
+            return Liquid.UseRubyDateFormat ? date.ToStrFTime(format) : date.ToString(format);
         }
 
         /// <summary>
-        /// Get the first element of the passed in array 
-        /// 
+        /// Get the first element of the passed in array
+        ///
         /// Example:
         ///   {{ product.images | first | to_img }}
         /// </summary>
@@ -519,8 +468,8 @@ namespace DotLiquid
         }
 
         /// <summary>
-        /// Get the last element of the passed in array 
-        /// 
+        /// Get the last element of the passed in array
+        ///
         /// Example:
         ///   {{ product.images | last | to_img }}
         /// </summary>
@@ -572,6 +521,26 @@ namespace DotLiquid
         }
 
         /// <summary>
+        /// Rounds a decimal value to the specified places
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="places"></param>
+        /// <returns>The rounded value; null if an exception have occured</returns>
+        public static object Round(object input, object places = null)
+        {
+            try
+            {
+                var p = places == null ? 0 : Convert.ToInt32(places);
+                var i = Convert.ToDecimal(input);
+                return Math.Round(i, p);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Division
         /// </summary>
         /// <param name="input"></param>
@@ -582,9 +551,26 @@ namespace DotLiquid
             return DoMathsOperation(input, operand, Expression.Divide);
         }
 
+        /// <summary>
+        /// Performs an arithmetic remainder operation on the input
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="operand"></param>
+        /// <returns></returns>
         public static object Modulo(object input, object operand)
         {
             return DoMathsOperation(input, operand, Expression.Modulo);
+        }
+
+        /// <summary>
+        /// If a value isn't set for a variable in the template, allow the user to specify a default value for that variable
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        public static string Default(string input, string @defaultValue)
+        {
+            return !string.IsNullOrWhiteSpace(input) ? input : defaultValue;
         }
 
         private static object DoMathsOperation(object input, object operand, Func<Expression, Expression, BinaryExpression> operation)
@@ -593,13 +579,13 @@ namespace DotLiquid
                 return DoNumericMathsOperation(input, operand, operation);
 
             return input == null || operand == null
-                ? null
-                : ExpressionUtility.CreateExpression(operation, input.GetType(), operand.GetType(), input.GetType(), true)
-                    .DynamicInvoke(input, operand);
+                       ? null
+                       : ExpressionUtility.CreateExpression(operation, input.GetType(), operand.GetType(), input.GetType(), true)
+                           .DynamicInvoke(input, operand);
         }
 
         private static dynamic DoNumericMathsOperation(dynamic input, dynamic operand,
-            Func<Expression, Expression, BinaryExpression> operation)
+                                                       Func<Expression, Expression, BinaryExpression> operation)
         {
             if (!((object)input).IsNumeric() || !((object)operand).IsNumeric())
                 throw new System.ArgumentException();

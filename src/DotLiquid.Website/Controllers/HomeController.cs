@@ -1,13 +1,12 @@
-﻿using System.Web.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace DotLiquid.Website.Controllers
 {
-	[HandleError]
-	public class HomeController : Controller
-	{
-		public ActionResult Index()
-		{
-			return View();
-		}
-	}
+    public class HomeController : Controller
+    {
+        public IActionResult Index()
+        {
+            return View();
+        }
+    }
 }

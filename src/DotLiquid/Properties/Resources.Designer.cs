@@ -10,8 +10,9 @@
 
 namespace DotLiquid.Properties {
     using System;
-    
-    
+    using System.Reflection;
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -39,7 +40,7 @@ namespace DotLiquid.Properties {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("DotLiquid.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("DotLiquid.Properties.Resources", typeof(Resources).GetTypeInfo().Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -365,7 +366,16 @@ namespace DotLiquid.Properties {
                 return ResourceManager.GetString("VariableFilterNotFoundException", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to Error - Variable &apos;{0}&apos; could not be found..
+        /// </summary>
+        internal static string VariableNotFoundException {
+            get {
+                return ResourceManager.GetString("VariableNotFoundException", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to key could not be found.
         /// </summary>
