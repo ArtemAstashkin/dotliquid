@@ -17,8 +17,8 @@
   </metadata>
   <files>
 	<file src="..\LICENSE.txt" target="." />
-	<file src="..\src\DotLiquid\bin\Release\DotLiquid.dll" target="lib\NET45" />
-	<file src="..\src\DotLiquid\bin\Release\DotLiquid.pdb" target="lib\NET45" />
+	<file src="..\src\DotLiquid\bin\Release\net45\DotLiquid.dll" target="lib\NET45" />
+	<file src="..\src\DotLiquid\bin\Release\net45\ReDotLiquid.pdb" target="lib\NET45" />
 <!-- 	<file src="..\src\DotLiquid\bin\Release-4.0\DotLiquid.dll" target="lib\NET40" />
 	<file src="..\src\DotLiquid\bin\Release-4.0\DotLiquid.pdb" target="lib\NET40" />
 	<file src="..\src\DotLiquid\bin\Release-3.5\DotLiquid.dll" target="lib\NET35" />
