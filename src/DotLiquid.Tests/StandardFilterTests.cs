@@ -326,6 +326,7 @@ namespace DotLiquid.Tests
                 Helper.AssertTemplateResult("5.5", "{{ 2  | plus:3.5 }}");
                 Helper.AssertTemplateResult("5.5", "{{ 3.5 | plus:2 }}");
                 Helper.AssertTemplateResult("11", "{{ '1' | plus:'1' }}");
+                Helper.AssertTemplateResult("2", "{{ a | plus:b }}", Hash.FromAnonymousObject(new { a = 1f, b = 1m }));
             }
         }
 
@@ -371,6 +372,8 @@ namespace DotLiquid.Tests
             Helper.AssertTemplateResult("125", "{{ 12.5 | times:10 }}");
             Helper.AssertTemplateResult("125", "{{ 12.5 | times:10.0 }}");
             Helper.AssertTemplateResult("foofoofoofoo", "{{ 'foo' | times:4 }}");
+
+            Helper.AssertTemplateResult("22", "{{ a | times:b }}", Hash.FromAnonymousObject(new { a = 2f, b = 11m }));
         }
 
         [Test]

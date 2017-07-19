@@ -623,8 +623,7 @@ namespace DotLiquid
                    || value is uint
                    || value is ulong
                    || value is float
-                   || value is double
-                   || value is decimal;
+                   || value is double;
         }
     }
 }
